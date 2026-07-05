@@ -1,0 +1,6 @@
+.env
+*.conf
+!config/**/*.example
+*.log
+/tmp/
+vendor/
