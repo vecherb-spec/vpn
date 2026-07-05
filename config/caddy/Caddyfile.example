@@ -1,21 +1,10 @@
-# Caddy reverse proxy для веб-админки AmneziaWG
-# Этот файл — шаблон. Реальный конфиг генерируется scripts/setup-caddy.sh
-#
-# Переменные из .env:
-#   ADMIN_DOMAIN  — домен админки
-#   CADDY_EMAIL   — email для Let's Encrypt
+# Caddy reverse proxy для Amnezia Web Panel
+# Реальный конфиг генерируется scripts/setup-caddy.sh
 
 {
     email admin@example.com
 }
 
 vpn-admin.example.com {
-    # Ограничение по IP (раскомментируйте при необходимости):
-    # @allowed remote_ip 10.0.0.0/8 192.168.0.0/16
-    # handle @allowed {
-    #     reverse_proxy 127.0.0.1:8080
-    # }
-    # respond "Forbidden" 403
-
-    reverse_proxy 127.0.0.1:8080
+    reverse_proxy 127.0.0.1:5000
 }

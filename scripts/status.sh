@@ -1,51 +1,67 @@
 #!/usr/bin/env bash
-# status.sh — проверка статуса VPN-сервиса и админки
+# status.sh — проверка статуса Amnezia Web Panel и AmneziaWG 2.0
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-WEB_SCRIPT="${PROJECT_DIR}/vendor/amneziawg-install/amneziawg-web.sh"
+
+APP_PORT="${APP_PORT:-5000}"
+AWG2_PORT="${AWG2_PORT:-51820}"
 
 GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[0;33m'; RESET='\033[0m'
 
 status_line() {
   local name="$1"
   local state="$2"
-  if [[ "${state}" == "active" ]] || [[ "${state}" == "running" ]]; then
-    printf '  %-20s %b%s%b\n' "${name}" "${GREEN}" "${state}" "${RESET}"
+  if [[ "${state}" == "active" ]] || [[ "${state}" == "running" ]] || [[ "${state}" == "ok" ]]; then
+    printf '  %-24s %b%s%b\n' "${name}" "${GREEN}" "${state}" "${RESET}"
   else
-    printf '  %-20s %b%s%b\n' "${name}" "${RED}" "${state:-inactive}" "${RESET}"
+    printf '  %-24s %b%s%b\n' "${name}" "${RED}" "${state:-inactive}" "${RESET}"
   fi
 }
 
-printf '\n=== Статус VPN-сервиса AmneziaWG 2.0 ===\n\n'
+printf '\n=== Статус VPN-сервиса (Amnezia Web Panel) ===\n\n'
 
-# VPN interface
-if ip link show awg0 &>/dev/null; then
-  status_line "VPN (awg0)" "active"
-  peers="$(awg show awg0 peers 2>/dev/null | wc -l || echo 0)"
-  printf '  %-20s %s подключено\n' "Пиры" "${peers}"
+# Docker panel
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^amnezia_panel$'; then
+  status_line "Amnezia Web Panel" "running"
 else
-  status_line "VPN (awg0)" "inactive"
+  status_line "Amnezia Web Panel" "stopped"
 fi
 
-# systemd services
-for svc in "awg-quick@awg0" "amneziawg-web" "caddy"; do
-  if systemctl list-unit-files "${svc}.service" &>/dev/null 2>&1; then
-    state="$(systemctl is-active "${svc}" 2>/dev/null || echo inactive)"
-    status_line "${svc}" "${state}"
-  fi
-done
-
-# Web panel status
-if [[ -f "${WEB_SCRIPT}" ]]; then
-  printf '\n'
-  bash "${WEB_SCRIPT}" status 2>/dev/null || true
+# Panel health
+if python3 -c "import socket; s=socket.socket(); s.settimeout(1); s.connect(('127.0.0.1', ${APP_PORT})); s.close()" 2>/dev/null; then
+  status_line "Panel API" "ok"
+else
+  status_line "Panel API" "unavailable"
 fi
 
-# Listening ports
+# Docker service
+if systemctl is-active docker &>/dev/null; then
+  status_line "Docker" "active"
+else
+  status_line "Docker" "inactive"
+fi
+
+# AWG2 container
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^amnezia-awg2$'; then
+  status_line "AmneziaWG 2.0 (awg2)" "running"
+else
+  status_line "AmneziaWG 2.0 (awg2)" "not installed"
+fi
+
+# Caddy
+if systemctl list-unit-files caddy.service &>/dev/null 2>&1; then
+  state="$(systemctl is-active caddy 2>/dev/null || echo inactive)"
+  status_line "Caddy" "${state}"
+fi
+
 printf '\n=== Порты ===\n'
-ss -ulnp 2>/dev/null | grep -E 'awg|51820|51821' || echo "  VPN UDP-порт не обнаружен"
-ss -tlnp 2>/dev/null | grep -E ':8080|:443' || true
+ss -tlnp 2>/dev/null | grep -E ":${APP_PORT}|:443 " || true
+ss -ulnp 2>/dev/null | grep -E ":${AWG2_PORT} " || true
+
+printf '\n=== Docker ===\n'
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null \
+  | grep -E 'amnezia|NAMES' || echo "  Нет контейнеров Amnezia"
 
 printf '\n'

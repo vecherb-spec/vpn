@@ -10,8 +10,7 @@ CADDY_CONFIG="/etc/caddy/Caddyfile"
 : "${ADMIN_DOMAIN:?Укажите ADMIN_DOMAIN в .env}"
 : "${CADDY_EMAIL:?Укажите CADDY_EMAIL в .env}"
 
-AWG_WEB_HOST="${AWG_WEB_HOST:-127.0.0.1}"
-AWG_WEB_PORT="${AWG_WEB_PORT:-8080}"
+APP_PORT="${APP_PORT:-5000}"
 ADMIN_ALLOWED_IPS="${ADMIN_ALLOWED_IPS:-}"
 
 install_caddy() {
@@ -45,11 +44,11 @@ generate_caddyfile() {
       allowed_ips_block+="    @allowed remote_ip ${ip}"$'\n'
     done
     allowed_ips_block+="    handle @allowed {"$'\n'
-    allowed_ips_block+="        reverse_proxy ${AWG_WEB_HOST}:${AWG_WEB_PORT}"$'\n'
+    allowed_ips_block+="        reverse_proxy 127.0.0.1:${APP_PORT}"$'\n'
     allowed_ips_block+="    }"$'\n'
     respond_block='    respond "Forbidden" 403'
   else
-    allowed_ips_block="    reverse_proxy ${AWG_WEB_HOST}:${AWG_WEB_PORT}"$'\n'
+    allowed_ips_block="    reverse_proxy 127.0.0.1:${APP_PORT}"$'\n'
   fi
 
   mkdir -p /etc/caddy
