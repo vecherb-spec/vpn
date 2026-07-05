@@ -1,0 +1,10 @@
+# Caddy reverse proxy для Amnezia Web Panel
+# Реальный конфиг генерируется scripts/setup-caddy.sh
+
+{
+    email admin@example.com
+}
+
+vpn-admin.example.com {
+    reverse_proxy 127.0.0.1:5000
+}
